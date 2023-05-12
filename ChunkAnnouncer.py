@@ -1,27 +1,53 @@
+import os
+import math
 import socket
-import time
 import json
+import time
 
-def divide_file(file_path):
-    # Implement file division using the provided code.
 
-def broadcast_chunks(chunk_list):
-    broadcast_ip = '255.255.255.255'
-    broadcast_port = 5001
+def chunk_file(content_name, filename):
+    c = os.path.getsize(filename)
+    CHUNK_SIZE = math.ceil(math.ceil(c) / 5)
 
-    # AF_INET "IPV4" protokolü anlamına gelmektedir
-    # type parametresi soketin stream tabanlı mı, yoksa datagram tabanlı mı olduğunu belirtir. TCP uygulamaları için bu
-    # parametresinin sock.SOCK_STREAM biçiminde UDP için ise sock.SOCK_DGRAM biçiminde girilmesi gerekmektedir.
+    index = 1
+    with open(filename, 'rb') as infile:
+        chunk = infile.read(int(CHUNK_SIZE))
+        while chunk:
+            chunkname = content_name + '_' + str(index)
+            with open(chunkname, 'wb+') as chunk_file:
+                chunk_file.write(chunk)
+            index += 1
+            chunk = infile.read(int(CHUNK_SIZE))
+    chunk_file.close()
+
+
+def broadcast_files(content_name):
+    # Get the list of files in the current directory
+    files = os.listdir('.')
+    matching_files = [file for file in files if file.startswith(content_name+'_')]
+
+
+    # Create a UDP socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    server_address = ('localhost', 5001)  # Change this to your broadcast IP address and port
+    try:
+        while True:
+            # Send data
+            message = json.dumps({"chunks": matching_files})
+            sock.sendto(message.encode(), server_address)
+            print(f"Broadcasted files: {matching_files}")
 
-    message = json.dumps({"chunks": chunk_list})
+            # Wait
+            time.sleep(10)
+    finally:
+        sock.close()
 
-    while True:
-        sock.sendto(message.encode('utf-8'), (broadcast_ip, broadcast_port))
-        time.sleep(60)
 
-def run():
-    file_path = input("Enter the file path: ")
-    chunk_list = divide_file(file_path)
-    broadcast_chunks(chunk_list)
+if __name__ == "__main__":
+    # Ask the user for the file to host
+    content_name = input("Enter the name of the file to host: ")
+    filename = content_name + '.png'
+    chunk_file(content_name, filename)
+
+    # Start broadcasting
+    broadcast_files(content_name)
