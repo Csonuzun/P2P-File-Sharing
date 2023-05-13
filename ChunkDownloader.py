@@ -1,9 +1,10 @@
 # ChunkDownloadder.py
+import json
 import os
 import socket
-import json
-import ChunkUploader
 import time
+
+import ChunkUploader
 
 output_directory = 'downloads'
 
@@ -45,7 +46,6 @@ def download_chunks(content_name, content_dict):
                         break
                 except Exception as e:
                     print(f"\nFailed to download {chunkname} from {ip_address} due to {str(e)}")
-            time.sleep(0.15)
             # Update the progress bar
 
             # Use PEX to download from other clients
@@ -71,6 +71,13 @@ def download_chunks(content_name, content_dict):
     print()  # Newline at the end of the progress bar
 
 
+def delete_chunks(content_name):
+    files = os.listdir('.')
+    for file in files:
+        if file.startswith(content_name + '_'):
+            os.remove(os.path.join('.', file))
+
+
 def combine_chunks(content_name):
     chunknames = [content_name + '_' + str(i + 1) for i in range(5)]
     with open(os.path.join(output_directory, content_name + '.png'), 'wb') as outfile:
@@ -78,14 +85,7 @@ def combine_chunks(content_name):
             with open(chunk, 'rb') as infile:
                 outfile.write(infile.read())
     delete_chunks(content_name)
-
-
-def delete_chunks(content_name):
-    files = os.listdir(output_directory)
-    for file in files:
-        if file.startswith(content_name + '_'):
-            os.remove(os.path.join(output_directory, file))
-            print(f"Deleted chunk: {file}")
+    print(f'Combined Chunks into: {content_name}.png')
 
 
 if __name__ == "__main__":
