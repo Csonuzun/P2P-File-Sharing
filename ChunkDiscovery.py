@@ -2,13 +2,15 @@
 import socket
 import json
 
-
 def discover_content():
     # Create a UDP socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
+    # Enable broadcast
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+
     # Bind the socket to the port
-    server_address = ('192.168.1.255', 5001)  # Change this to your listening IP address and port
+    server_address = ('0.0.0.0', 5001)  # Bind to all available network interfaces
     sock.bind(server_address)
 
     content_dict = {}

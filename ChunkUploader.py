@@ -43,21 +43,33 @@ def get_local_ip():
 
 
 def start_server():
-    # Create a TCP socket
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind((get_local_ip(), PORT))
-        s.listen()
-        print("waiting for connection...")
-        while True:
-            conn, addr = s.accept()
-            with conn:
-                print('Connected by', addr)
-                data = conn.recv(1024)
-                request = json.loads(data.decode())
-                chunkname = request["requested-content"]
+        try:
+            s.bind((get_local_ip(), PORT))
+            s.listen()
+            print("Waiting for connection...")
+            while True:
+                conn, addr = s.accept()
+                with conn:
+                    print('Connected by', addr)
+                    while True:
+                        data = conn.recv(1024)
+                        if not data:
+                            break
+                        request = json.loads(data.decode())
+                        chunkname = request["requested-content"]
+                        try:
+                            with open(os.path.join('media', chunkname), 'rb') as file:
+                                conn.sendall(file.read())
+                        except IOError as e:
+                            print(f"Failed to open file {chunkname}: {e}")
+                        except Exception as e:
+                            print(f"An error occurred: {e}")
+        except socket.error as e:
+            print(f"Failed to start server: {e}")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
 
-                with open(os.path.join('media', chunkname), 'rb') as file:
-                    conn.sendall(file.read())
 
 
 if __name__ == "__main__":

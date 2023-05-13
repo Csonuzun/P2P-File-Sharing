@@ -12,11 +12,9 @@ def download_chunks(content_name, content_dict):
     chunknames = [content_name + '_' + str(i + 1) for i in range(5)]
     total_chunks = len(chunknames)
 
-    # Display 0% progress at the start
-    print(f"\r[{' ':<50}] 0%", end='\t')
-
     for i, chunkname in enumerate(chunknames):
         if chunkname in content_dict:
+            peers = []
             for ip_address in content_dict[chunkname]:
                 try:
                     with socket.create_connection((ip_address, ChunkUploader.PORT)) as sock:
@@ -31,16 +29,44 @@ def download_chunks(content_name, content_dict):
                                 file.write(data)
 
                         print(f"\nDownloaded {chunkname} from {ip_address}")
+                        progress = (i + 1) / total_chunks
+                        progress_percentage = int(progress * 100)
+                        progress_bar = '=' * int(progress * 50)  # 50 units of progress bar
+
+                        print(f"\r[{progress_bar:<50}] {progress_percentage}%", end='\t')
+
+                        # Add connected peers to list
+                        message = json.dumps({"requested-peers": chunkname})
+                        sock.sendall(message.encode())
+                        data = sock.recv(1024)
+                        if data:
+                            peers += json.loads(data.decode())["peers"]
+
                         break
                 except Exception as e:
                     print(f"\nFailed to download {chunkname} from {ip_address} due to {str(e)}")
-        time.sleep(0.15)
-        # Update the progress bar
-        progress = (i + 1) / total_chunks
-        progress_percentage = int(progress * 100)
-        progress_bar = '=' * int(progress * 50)  # 50 units of progress bar
+            time.sleep(0.15)
+            # Update the progress bar
 
-        print(f"\r[{progress_bar:<50}] {progress_percentage}%", end='\t')
+            # Use PEX to download from other clients
+            for peer in peers:
+                try:
+                    with socket.create_connection((peer, ChunkUploader.PORT)) as sock:
+                        message = json.dumps({"requested-content": chunkname})
+                        sock.sendall(message.encode())
+
+                        with open(chunkname, 'wb') as file:
+                            while True:
+                                data = sock.recv(1024)
+                                if not data:
+                                    break
+                                file.write(data)
+
+                        print(f"\nDownloaded {chunkname} from {peer}")
+                        break
+                except Exception as e:
+                    print(f"\nFailed to download {chunkname} from {peer} due to {str(e)}")
+        print()  # Newline after each chunk
 
     print()  # Newline at the end of the progress bar
 
