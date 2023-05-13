@@ -1,3 +1,4 @@
+#ChunkDiscovery.py
 import socket
 import json
 
@@ -7,7 +8,7 @@ def discover_content():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     # Bind the socket to the port
-    server_address = ('localhost', 5001)  # Change this to your listening IP address and port
+    server_address = ('192.168.1.255', 5001)  # Change this to your listening IP address and port
     sock.bind(server_address)
 
     content_dict = {}
@@ -22,7 +23,8 @@ def discover_content():
         for chunk in data["chunks"]:
             if chunk not in content_dict:
                 content_dict[chunk] = []
-            content_dict[chunk].append(address[0])
+            if address[0] not in content_dict[chunk]:
+                content_dict[chunk].append(address[0])
 
         print(f"Content dictionary: {content_dict}")
         with open("content_dict.json", "w") as file:

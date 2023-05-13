@@ -1,53 +1,63 @@
-import os
-import math
-import socket
 import json
+import math
+import os
+import socket
 import time
 
+directory = "media"
 
-def chunk_file(content_name, filename):
-    c = os.path.getsize(filename)
-    CHUNK_SIZE = math.ceil(math.ceil(c) / 5)
 
+def chunk_file(content_name):
+    full_path = os.path.join(os.getcwd(), directory, content_name + '.png')
+    c = os.path.getsize(full_path)
+    CHUNK_SIZE = math.ceil(c / 5)
     index = 1
-    with open(filename, 'rb') as infile:
+    with open(full_path, 'rb') as infile:
         chunk = infile.read(int(CHUNK_SIZE))
         while chunk:
-            chunkname = content_name + '_' + str(index)
+            chunkname = os.path.join(directory, content_name + '_' + str(index))
             with open(chunkname, 'wb+') as chunk_file:
                 chunk_file.write(chunk)
+
             index += 1
             chunk = infile.read(int(CHUNK_SIZE))
-    chunk_file.close()
 
 
-def broadcast_files(content_name):
-    # Get the list of files in the current directory
-    files = os.listdir('.')
-    matching_files = [file for file in files if file.startswith(content_name+'_')]
-
-
-    # Create a UDP socket
+def broadcast_files(matching_files):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_address = ('localhost', 5001)  # Change this to your broadcast IP address and port
+    server_address = ('192.168.1.255', 5001)
     try:
         while True:
-            # Send data
             message = json.dumps({"chunks": matching_files})
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
             sock.sendto(message.encode(), server_address)
             print(f"Broadcasted files: {matching_files}")
-
-            # Wait
-            time.sleep(10)
+            time.sleep(60)
     finally:
         sock.close()
 
 
-if __name__ == "__main__":
-    # Ask the user for the file to host
-    content_name = input("Enter the name of the file to host: ")
-    filename = content_name + '.png'
-    chunk_file(content_name, filename)
+def get_matching_files(content_names):
+    files = os.listdir(directory)
+    result = []
+    for content_name in content_names:
+        for file in files:
+            if file.startswith(content_name + '_'):
+                result.append(file)
+    return result
 
-    # Start broadcasting
-    broadcast_files(content_name)
+
+def get_png_files():
+    files = os.listdir(directory)
+    return [file for file in files if file.endswith('.png')]
+
+
+if __name__ == "__main__":
+    png_files = get_png_files()
+    content_names = []
+    for png_file in png_files:
+        content_name, _ = os.path.splitext(png_file)
+        content_names.append(content_name)
+        chunk_file(content_name)
+    print(f'image files {content_names}')
+    broadcast_files(get_matching_files(content_names))
